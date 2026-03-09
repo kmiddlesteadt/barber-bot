@@ -1,2 +1,2 @@
 # barber-bot
-Repository for Artificial Intelligence project
+Repository for the Machine Learning project
