@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberBot - Capture Your Photo</title>
+    <style>
+        /* Base Styling */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f121a;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 0;
+            background-color: rgba(12, 14, 20, 0.95);
+            border-bottom: 1px solid #1c202a;
+        }
+        .brand-name { font-size: 24px; font-weight: 800; margin: 0; color: #00e5ff; display: flex; align-items: center; gap: 8px;}
+
+        /* Main App Container */
+        .camera-app-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            box-sizing: border-box;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Camera Viewport */
+        .camera-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/4;
+            background-color: #151924;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            border: 2px solid #1c202a;
+            margin-bottom: 20px;
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1); /* Mirrors the camera feed visually */
+        }
+
+        /* The Face Outline Guide */
+        .face-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55%;
+            height: 65%;
+            /* Custom border radius to look more like a human head/jawline */
+            border-radius: 50% 50% 45% 45%; 
+            border: 3px dashed rgba(0, 229, 255, 0.7);
+            box-sizing: border-box;
+            pointer-events: none; /* Allows clicks to pass through to the video */
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Dims the background around the face */
+        }
+
+        /* Instructions Section */
+        .instructions-panel {
+            background-color: #151924;
+            border: 1px solid #1c202a;
+            border-radius: 12px;
+            padding: 15px 20px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 25px;
+        }
+
+        .instructions-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            color: #aaaaaa;
+            font-size: 15px;
+        }
+
+        .instructions-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Controls Area */
+        .controls {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Primary Capture Button */
+        .btn-capture {
+            background-color: #00e5ff;
+            color: #0c0e14;
+            border: none;
+            padding: 18px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-capture:hover { 
+            background-color: #00b8cc; 
+            transform: translateY(-2px);
+        }
+
+        /* Secondary Back Button */
+        .btn-back {
+            background: transparent;
+            color: #aaaaaa;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            align-self: flex-start; /* Aligns to the left under the capture button */
+            padding: 5px 0;
+            transition: color 0.2s;
+        }
+
+        .btn-back:hover {
+            color: #ffffff;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" style="text-decoration: none;">
+            <h2 class="brand-name">💈🤖 BarberBot</h2>
+        </a>
+    </header>
+
+    <div class="camera-app-container">
+        
+        <div class="camera-wrapper">
+            <video id="webcam" autoplay playsinline></video>
+            <div class="face-guide"></div>
+        </div>
+
+        <div class="instructions-panel">
+            <ul class="instructions-list">
+                <li>💡 <strong>Good lighting</strong> (face a window or bright light)</li>
+                <li>🧢 <strong>Remove hat/glasses</strong> (keep forehead clear)</li>
+                <li>🎯 <strong>Center face</strong> (align inside the outline)</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <button class="btn-capture" id="captureBtn">📸 Capture Photo</button>
+            <button class="btn-back" id="backBtn">⬅ Back to Questionnaire</button>
+        </div>
+
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('webcam');
+        const captureBtn = document.getElementById('captureBtn');
+        const backBtn = document.getElementById('backBtn');
+
+        // 1. Start the Camera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" } // Use the front-facing camera
+                });
+                videoElement.srcObject = stream;
+            } catch (err) {
+                console.error("Camera error: ", err);
+                alert("Please allow camera access so we can scan your face.");
+            }
+        }
+        
+        // Initialize camera on page load
+        window.addEventListener('load', startCamera);
+
+        // 2. Handle the Capture Button
+        captureBtn.addEventListener('click', () => {
+            // Create a hidden canvas to grab the frame
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            const context = canvas.getContext('2d');
+            
+            // Flip the canvas horizontally so the saved photo matches the mirrored video feed
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to an image string and save to session storage
+            const imageDataURL = canvas.toDataURL('image/png');
+            sessionStorage.setItem('customerPhoto', imageDataURL);
+            
+            // Move to the final Results page
+            window.location.href = 'results.html';
+        });
+
+        // 3. Handle the Back Button
+        backBtn.addEventListener('click', () => {
+            // Stops the camera before navigating away
+            const stream = videoElement.srcObject;
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            window.location.href = 'questionnaire.html';
+        });
+    </script>
+</body>
+</html>
