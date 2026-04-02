@@ -5,33 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarberBot - Your AI Results</title>
     <style>
-        /* Base Styling (Matching your theme) */
+        :root {
+            --red: #D62828;
+            --blue: #1D4ED8;
+            --white: #FFFFFF;
+            --cream: #F8F1E7;
+            --dark: #1F2937;
+            --card: #ffffff;
+        }
+
         body {
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f121a;
-            color: #ffffff;
+            background: var(--cream);
+            color: var(--dark);
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
         }
 
-        /* Header */
         header {
             width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 15px 0;
-            background-color: rgba(12, 14, 20, 0.95);
-            border-bottom: 1px solid #1c202a;
+            background: var(--blue);
+            border-bottom: 5px solid var(--red);
         }
-        .header-link { text-decoration: none; }
-        .brand-name { font-size: 24px; font-weight: 800; margin: 0; color: #00e5ff; display: flex; align-items: center; gap: 8px;}
 
-        /* Main Container */
+        .header-link { text-decoration: none; }
+
+        .brand-name {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            color: var(--white);
+        }
+
         .results-container {
             width: 100%;
             max-width: 600px;
@@ -46,82 +59,95 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        h1 { margin-top: 0; font-size: 28px; color: #f2f5f8; }
-        .subtitle { color: #00e5ff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; margin-bottom: 20px; }
+        h1 { margin-top: 0; font-size: 28px; }
 
-        /* The AI Image Showcase */
+        .subtitle {
+            color: var(--red);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
         .image-showcase {
             position: relative;
             width: 100%;
             max-width: 350px;
             aspect-ratio: 3/4;
-            background-color: #151924;
+            background: var(--white);
             border-radius: 16px;
             margin: 0 auto 30px;
-            border: 2px solid #1c202a;
-            box-shadow: 0 10px 30px rgba(0, 229, 255, 0.15);
+            border: 3px solid var(--blue);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            transition: all 0.3s ease;
         }
 
-        /* Fake Image Placeholder text for the presentation */
         .mock-image-text {
-            color: #555;
+            color: #777;
             font-size: 14px;
             font-weight: bold;
             text-transform: uppercase;
-            letter-spacing: 1px;
             text-align: center;
-            padding: 20px;
         }
 
-        /* Score Badge */
         .match-score {
             position: absolute;
             top: 15px;
             right: 15px;
-            background-color: #00e5ff;
-            color: #0c0e14;
+            background: var(--red);
+            color: var(--white);
             font-weight: 900;
-            font-size: 18px;
-            padding: 8px 15px;
+            font-size: 16px;
+            padding: 8px 14px;
             border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.4);
         }
 
         .style-title {
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 5px;
-            color: #ffffff;
         }
 
-        /* Scan Data / Questionnaire Answers */
         .data-panel {
-            background-color: #151924;
-            border: 1px solid #1c202a;
+            background: var(--white);
+            border: 2px solid var(--blue);
             border-radius: 12px;
             padding: 20px;
             text-align: left;
             margin-bottom: 30px;
         }
 
-        .data-panel h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; color: #aaaaaa; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #1c202a; padding-bottom: 10px;}
-        
+        .data-panel h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: var(--blue);
+            border-bottom: 2px solid var(--red);
+            padding-bottom: 8px;
+        }
+
         .data-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
         }
 
-        .data-item { font-size: 14px; }
-        .data-label { color: #aaaaaa; display: block; font-size: 12px; text-transform: uppercase; margin-bottom: 3px; }
-        .data-value { color: #00e5ff; font-weight: bold; font-size: 16px; }
+        .data-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+        }
 
-        /* Buttons */
+        .data-value {
+            color: var(--blue);
+            font-weight: bold;
+            font-size: 16px;
+        }
+
         .controls {
             display: flex;
             flex-direction: column;
@@ -130,18 +156,19 @@
         }
 
         .btn-primary {
-            background-color: #00e5ff;
-            color: #0c0e14;
+            background: var(--red);
+            color: var(--white);
             border: none;
             padding: 16px;
             font-size: 18px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
         }
-        .btn-primary:hover { background-color: #00b8cc; transform: translateY(-2px); }
+
+        .btn-primary:hover {
+            background: #b91c1c;
+        }
 
         .btn-group-row {
             display: flex;
@@ -150,146 +177,141 @@
 
         .btn-secondary {
             flex: 1;
-            background-color: #2a2f3d;
-            color: #ffffff;
-            border: 2px solid #2a2f3d;
+            background: var(--blue);
+            color: var(--white);
+            border: none;
             padding: 14px;
             font-size: 16px;
             font-weight: bold;
             border-radius: 8px;
-            cursor: pointer;
             text-decoration: none;
             text-align: center;
-            transition: all 0.2s;
         }
-        .btn-secondary:hover { background-color: #3e4659; transform: translateY(-2px); }
+
+        .btn-secondary:hover {
+            background: #1e40af;
+        }
 
     </style>
 </head>
 <body>
 
-    <header>
-        <a href="index.html" class="header-link">
-            <h2 class="brand-name">💈🤖 BarberBot</h2>
-        </a>
-    </header>
+<header>
+    <a href="index.html" class="header-link">
+        <h2 class="brand-name">💈 BarberBot</h2>
+    </a>
+</header>
 
-    <div class="results-container">
-        
-        <div class="subtitle">Analysis Complete</div>
-        <h1>Best haircut for you</h1>
+<div class="results-container">
+    
+    <div class="subtitle">Analysis Complete</div>
+    <h1>Best haircut for you</h1>
 
-        <div class="image-showcase" id="imageContainer">
-            <div class="match-score" id="matchScore">98% Match</div>
-            <div class="mock-image-text" id="mockImageText">[ AI Generated Image:<br>Textured Fringe ]</div>
-        </div>
-
-        <div class="style-title" id="styleTitle">Textured Fringe</div>
-        <p style="color: #aaaaaa; margin-bottom: 30px; font-size: 15px;" id="styleDesc">Adds volume to the top while keeping the sides sharp and clean.</p>
-
-        <div class="data-panel">
-            <h3>User Scan Data</h3>
-            <div class="data-grid">
-                <div class="data-item">
-                    <span class="data-label">Hair Type</span>
-                    <span class="data-value" id="val-type">--</span>
-                </div>
-                <div class="data-item">
-                    <span class="data-label">Current Length</span>
-                    <span class="data-value" id="val-length">--</span>
-                </div>
-                <div class="data-item">
-                    <span class="data-label">Style Pref</span>
-                    <span class="data-value" id="val-pref">--</span>
-                </div>
-                <div class="data-item">
-                    <span class="data-label">Facial Hair</span>
-                    <span class="data-value" id="val-beard">--</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <button class="btn-primary" id="btnNextStyle">🔄 Try Another Style</button>
-            
-            <div class="btn-group-row">
-                <a href="camera.html" class="btn-secondary">⬅ Retake Photo</a>
-                <a href="index.html" class="btn-secondary">🏠 Home</a>
-            </div>
-        </div>
-
+    <div class="image-showcase" id="imageContainer">
+        <div class="match-score" id="matchScore">98% Match</div>
+        <div class="mock-image-text" id="mockImageText">[ AI Generated Image:<br>Textured Fringe ]</div>
     </div>
 
-    <script>
-        // 1. Load User Preferences from the Questionnaire
-        window.addEventListener('load', () => {
-            const storedData = sessionStorage.getItem('userPreferences');
-            
-            if (storedData) {
-                const prefs = JSON.parse(storedData);
-                document.getElementById('val-type').textContent = prefs.hairType;
-                document.getElementById('val-length').textContent = prefs.hairLength;
-                document.getElementById('val-pref').textContent = prefs.stylePref;
-                document.getElementById('val-beard').textContent = prefs.facialHair;
-            } else {
-                // Fallback if someone jumps straight to results.html without filling the form
-                document.getElementById('val-type').textContent = "Unknown";
-                document.getElementById('val-length').textContent = "Unknown";
-                document.getElementById('val-pref').textContent = "Unknown";
-                document.getElementById('val-beard').textContent = "Unknown";
-            }
-        });
+    <div class="style-title" id="styleTitle">Textured Fringe</div>
+    <p style="color: #555; margin-bottom: 30px; font-size: 15px;" id="styleDesc">Adds volume to the top while keeping the sides sharp and clean.</p>
 
-        // 2. Setup Mock AI Results Logic
-        const mockStyles = [
-            {
-                title: "Textured Fringe",
-                desc: "Adds volume to the top while keeping the sides sharp and clean.",
-                score: "98% Match",
-                mockImgText: "[ AI Generated Image:<br>Textured Fringe ]"
-            },
-            {
-                title: "Classic Taper Fade",
-                desc: "A timeless, professional look that requires minimal daily styling.",
-                score: "89% Match",
-                mockImgText: "[ AI Generated Image:<br>Classic Taper Fade ]"
-            },
-            {
-                title: "Modern Buzz Cut",
-                desc: "Ultra low-maintenance. Highlights strong facial structure and jawline.",
-                score: "76% Match",
-                mockImgText: "[ AI Generated Image:<br>Modern Buzz Cut ]"
-            }
-        ];
+    <div class="data-panel">
+        <h3>User Scan Data</h3>
+        <div class="data-grid">
+            <div>
+                <span class="data-label">Hair Type</span>
+                <span class="data-value" id="val-type">--</span>
+            </div>
+            <div>
+                <span class="data-label">Current Length</span>
+                <span class="data-value" id="val-length">--</span>
+            </div>
+            <div>
+                <span class="data-label">Style Pref</span>
+                <span class="data-value" id="val-pref">--</span>
+            </div>
+            <div>
+                <span class="data-label">Facial Hair</span>
+                <span class="data-value" id="val-beard">--</span>
+            </div>
+        </div>
+    </div>
 
-        let currentStyleIndex = 0;
+    <div class="controls">
+        <button class="btn-primary" id="btnNextStyle">🔄 Try Another Style</button>
+        
+        <div class="btn-group-row">
+            <a href="camera.html" class="btn-secondary">⬅ Retake Photo</a>
+            <a href="index.html" class="btn-secondary">🏠 Home</a>
+        </div>
+    </div>
 
-        // DOM Elements to update
-        const styleTitle = document.getElementById('styleTitle');
-        const styleDesc = document.getElementById('styleDesc');
-        const matchScore = document.getElementById('matchScore');
-        const mockImageText = document.getElementById('mockImageText');
-        const btnNextStyle = document.getElementById('btnNextStyle');
+</div>
 
-        // Function to cycle through styles
-        btnNextStyle.addEventListener('click', () => {
-            // Increment index, loop back to 0 if at the end of the array
-            currentStyleIndex = (currentStyleIndex + 1) % mockStyles.length;
-            
-            const nextStyle = mockStyles[currentStyleIndex];
-            
-            styleTitle.textContent = nextStyle.title;
-            styleDesc.textContent = nextStyle.desc;
-            matchScore.textContent = nextStyle.score;
-            mockImageText.innerHTML = nextStyle.mockImgText;
+<script>
+window.addEventListener('load', () => {
+    const storedData = sessionStorage.getItem('userPreferences');
+    
+    if (storedData) {
+        const prefs = JSON.parse(storedData);
+        document.getElementById('val-type').textContent = prefs.hairType;
+        document.getElementById('val-length').textContent = prefs.hairLength;
+        document.getElementById('val-pref').textContent = prefs.stylePref;
+        document.getElementById('val-beard').textContent = prefs.facialHair;
+    } else {
+        document.getElementById('val-type').textContent = "Unknown";
+        document.getElementById('val-length').textContent = "Unknown";
+        document.getElementById('val-pref').textContent = "Unknown";
+        document.getElementById('val-beard').textContent = "Unknown";
+    }
+});
 
-            // Optional: Add a quick flash effect to simulate "generating"
-            const imageContainer = document.getElementById('imageContainer');
-            imageContainer.style.opacity = '0.5';
-            setTimeout(() => {
-                imageContainer.style.opacity = '1';
-            }, 150);
-        });
-    </script>
+const mockStyles = [
+    {
+        title: "Textured Fringe",
+        desc: "Adds volume to the top while keeping the sides sharp and clean.",
+        score: "98% Match",
+        mockImgText: "[ AI Generated Image:<br>Textured Fringe ]"
+    },
+    {
+        title: "Classic Taper Fade",
+        desc: "A timeless, professional look.",
+        score: "89% Match",
+        mockImgText: "[ AI Generated Image:<br>Classic Taper Fade ]"
+    },
+    {
+        title: "Modern Buzz Cut",
+        desc: "Ultra low-maintenance.",
+        score: "76% Match",
+        mockImgText: "[ AI Generated Image:<br>Modern Buzz Cut ]"
+    }
+];
+
+let currentStyleIndex = 0;
+
+const styleTitle = document.getElementById('styleTitle');
+const styleDesc = document.getElementById('styleDesc');
+const matchScore = document.getElementById('matchScore');
+const mockImageText = document.getElementById('mockImageText');
+const btnNextStyle = document.getElementById('btnNextStyle');
+
+btnNextStyle.addEventListener('click', () => {
+    currentStyleIndex = (currentStyleIndex + 1) % mockStyles.length;
+    
+    const nextStyle = mockStyles[currentStyleIndex];
+    
+    styleTitle.textContent = nextStyle.title;
+    styleDesc.textContent = nextStyle.desc;
+    matchScore.textContent = nextStyle.score;
+    mockImageText.innerHTML = nextStyle.mockImgText;
+
+    const imageContainer = document.getElementById('imageContainer');
+    imageContainer.style.opacity = '0.5';
+    setTimeout(() => {
+        imageContainer.style.opacity = '1';
+    }, 150);
+});
+</script>
+
 </body>
 </html>

@@ -5,35 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarberBot - Tell Us About Your Style</title>
     <style>
-        /* Base Styling */
+        :root {
+            --red: #D62828;
+            --blue: #1D4ED8;
+            --white: #FFFFFF;
+            --cream: #F8F1E7;
+            --dark: #1F2937;
+        }
+
         body {
             margin: 0;
             padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f121a;
-            color: #ffffff;
-            line-height: 1.6;
+            background: var(--cream);
+            color: var(--dark);
         }
 
-        /* Header (Now Clickable) */
         header {
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 15px;
-            background-color: rgba(12, 14, 20, 0.95);
-            border-bottom: 1px solid #1c202a;
+            background: var(--blue);
+            border-bottom: 5px solid var(--red);
         }
         
         .header-link { text-decoration: none; }
-        .brand-name { font-size: 24px; font-weight: 800; margin: 0; color: #00e5ff; display: flex; align-items: center; gap: 8px;}
+        .brand-name { font-size: 24px; font-weight: 800; margin: 0; color: var(--white); }
 
         /* Progress Bar */
-        .progress-container { width: 100%; height: 6px; background-color: #1c202a; }
-        .progress-bar { height: 100%; width: 0%; background-color: #00e5ff; transition: width 0.4s ease; box-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+        .progress-container { width: 100%; height: 6px; background: #ddd; }
+        .progress-bar { height: 100%; width: 0%; background: var(--red); transition: width 0.4s ease; }
 
-        /* Form Container */
-        .form-container { max-width: 600px; margin: 40px auto; padding: 0 20px; animation: fadeIn 0.8s ease; }
+        .form-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            animation: fadeIn 0.8s ease;
+        }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -41,20 +50,57 @@
         }
 
         h1 { text-align: center; font-size: 32px; margin-bottom: 10px; }
-        .instructions { text-align: center; color: #aaaaaa; margin-bottom: 40px; font-size: 18px; }
 
-        /* Question Blocks */
-        .question-block { background: #151924; padding: 25px; border-radius: 12px; border: 1px solid #1c202a; margin-bottom: 30px; }
-        .question-block h3 { margin-top: 0; margin-bottom: 15px; color: #f2f5f8; }
+        .instructions {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 18px;
+        }
 
-        /* Custom Radio Buttons */
-        .options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; }
-        .option-card { background-color: #2a2f3d; border: 2px solid #2a2f3d; border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; transition: all 0.2s; font-weight: bold; }
-        .option-card:hover { background-color: #3e4659; }
+        .question-block {
+            background: var(--white);
+            padding: 25px;
+            border-radius: 12px;
+            border: 2px solid var(--blue);
+            margin-bottom: 30px;
+        }
+
+        .question-block h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--blue);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .option-card {
+            background: #f3f4f6;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+
+        .option-card:hover {
+            border-color: var(--blue);
+        }
+
         .option-card input[type="radio"] { display: none; }
-        .option-card:has(input:checked) { border-color: #00e5ff; background-color: rgba(0, 229, 255, 0.1); color: #00e5ff; }
 
-        /* Controls Area */
+        .option-card:has(input:checked) {
+            border-color: var(--red);
+            background: rgba(214, 40, 40, 0.1);
+            color: var(--red);
+        }
+
         .controls {
             display: flex;
             flex-direction: column;
@@ -63,10 +109,9 @@
             margin-bottom: 60px;
         }
 
-        /* Submit Button */
         .btn-submit {
-            background-color: #00e5ff;
-            color: #0c0e14;
+            background: var(--red);
+            color: var(--white);
             border: none;
             padding: 18px;
             font-size: 20px;
@@ -74,108 +119,109 @@
             border-radius: 8px;
             cursor: pointer;
             width: 100%;
-            transition: all 0.2s;
         }
-        .btn-submit:hover { background-color: #00b8cc; transform: translateY(-2px); }
 
-        /* Back Button */
+        .btn-submit:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+        }
+
         .btn-back {
             background: transparent;
-            color: #aaaaaa;
+            color: var(--blue);
             border: none;
             font-size: 16px;
             cursor: pointer;
-            align-self: flex-start;
-            padding: 5px 0;
-            transition: color 0.2s;
             text-decoration: none;
         }
-        .btn-back:hover { color: #ffffff; }
+
+        .btn-back:hover { text-decoration: underline; }
 
     </style>
 </head>
 <body>
 
-    <header>
-        <a href="index.html" class="header-link">
-            <h2 class="brand-name">💈🤖 BarberBot</h2>
-        </a>
-    </header>
+<header>
+    <a href="index.html" class="header-link">
+        <h2 class="brand-name">💈 BarberBot</h2>
+    </a>
+</header>
 
-    <div class="progress-container">
-        <div class="progress-bar" id="progressBar"></div>
-    </div>
+<div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+</div>
 
-    <div class="form-container">
-        <h1>Tell us about your style</h1>
-        <div class="instructions">Answer a few quick questions to help us tailor your results.</div>
+<div class="form-container">
+    <h1>Tell us about your style</h1>
+    <div class="instructions">Answer a few quick questions to help us tailor your results.</div>
 
-        <form id="styleForm">
-            
-            <div class="question-block">
-                <h3>1. What is your natural hair type?</h3>
-                <div class="options-grid">
-                    <label class="option-card"><input type="radio" name="hairType" value="Straight" required> Straight</label>
-                    <label class="option-card"><input type="radio" name="hairType" value="Wavy"> Wavy</label>
-                    <label class="option-card"><input type="radio" name="hairType" value="Curly"> Curly</label>
-                </div>
+    <form id="styleForm">
+        
+        <div class="question-block">
+            <h3>1. What is your natural hair type?</h3>
+            <div class="options-grid">
+                <label class="option-card"><input type="radio" name="hairType" value="Straight" required> Straight</label>
+                <label class="option-card"><input type="radio" name="hairType" value="Wavy"> Wavy</label>
+                <label class="option-card"><input type="radio" name="hairType" value="Curly"> Curly</label>
             </div>
+        </div>
 
-            <div class="question-block">
-                <h3>2. Current hair length?</h3>
-                <div class="options-grid">
-                    <label class="option-card"><input type="radio" name="hairLength" value="Short" required> Short</label>
-                    <label class="option-card"><input type="radio" name="hairLength" value="Medium"> Medium</label>
-                    <label class="option-card"><input type="radio" name="hairLength" value="Long"> Long</label>
-                </div>
+        <div class="question-block">
+            <h3>2. Current hair length?</h3>
+            <div class="options-grid">
+                <label class="option-card"><input type="radio" name="hairLength" value="Short" required> Short</label>
+                <label class="option-card"><input type="radio" name="hairLength" value="Medium"> Medium</label>
+                <label class="option-card"><input type="radio" name="hairLength" value="Long"> Long</label>
             </div>
+        </div>
 
-            <div class="question-block">
-                <h3>3. What is your style preference?</h3>
-                <div class="options-grid">
-                    <label class="option-card"><input type="radio" name="stylePref" value="Low Maintenance" required> Low Maintenance</label>
-                    <label class="option-card"><input type="radio" name="stylePref" value="Trendy"> Trendy</label>
-                    <label class="option-card"><input type="radio" name="stylePref" value="Professional"> Professional</label>
-                </div>
+        <div class="question-block">
+            <h3>3. What is your style preference?</h3>
+            <div class="options-grid">
+                <label class="option-card"><input type="radio" name="stylePref" value="Low Maintenance" required> Low Maintenance</label>
+                <label class="option-card"><input type="radio" name="stylePref" value="Trendy"> Trendy</label>
+                <label class="option-card"><input type="radio" name="stylePref" value="Professional"> Professional</label>
             </div>
+        </div>
 
-            <div class="question-block">
-                <h3>4. Do you have facial hair?</h3>
-                <div class="options-grid">
-                    <label class="option-card"><input type="radio" name="facialHair" value="Yes" required> Yes</label>
-                    <label class="option-card"><input type="radio" name="facialHair" value="No"> No</label>
-                </div>
+        <div class="question-block">
+            <h3>4. Do you have facial hair?</h3>
+            <div class="options-grid">
+                <label class="option-card"><input type="radio" name="facialHair" value="Yes" required> Yes</label>
+                <label class="option-card"><input type="radio" name="facialHair" value="No"> No</label>
             </div>
+        </div>
 
-            <div class="controls">
-                <button type="submit" class="btn-submit" id="submitBtn">Next Step ➜</button>
-                <a href="index.html" class="btn-back">⬅ Back to Home</a>
-            </div>
-        </form>
-    </div>
+        <div class="controls">
+            <button type="submit" class="btn-submit">Next Step ➜</button>
+            <a href="index.html" class="btn-back">⬅ Back to Home</a>
+        </div>
+    </form>
+</div>
 
-    <script>
-        const form = document.getElementById('styleForm');
-        const progressBar = document.getElementById('progressBar');
-        const totalQuestions = 4;
+<script>
+const form = document.getElementById('styleForm');
+const progressBar = document.getElementById('progressBar');
+const totalQuestions = 4;
 
-        form.addEventListener('change', () => {
-            const answeredQuestions = form.querySelectorAll('input[type="radio"]:checked').length;
-            const progressPercentage = (answeredQuestions / totalQuestions) * 100;
-            progressBar.style.width = progressPercentage + '%';
-        });
+form.addEventListener('change', () => {
+    const answeredQuestions = form.querySelectorAll('input[type="radio"]:checked').length;
+    const progressPercentage = (answeredQuestions / totalQuestions) * 100;
+    progressBar.style.width = progressPercentage + '%';
+});
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault(); 
-            const formData = {
-                hairType: document.querySelector('input[name="hairType"]:checked').value,
-                hairLength: document.querySelector('input[name="hairLength"]:checked').value,
-                stylePref: document.querySelector('input[name="stylePref"]:checked').value,
-                facialHair: document.querySelector('input[name="facialHair"]:checked').value,
-            };
-            sessionStorage.setItem('userPreferences', JSON.stringify(formData));
-            window.location.href = 'camera.html'; 
-        });
-    </script>
+form.addEventListener('submit', (e) => {
+    e.preventDefault(); 
+    const formData = {
+        hairType: document.querySelector('input[name="hairType"]:checked').value,
+        hairLength: document.querySelector('input[name="hairLength"]:checked').value,
+        stylePref: document.querySelector('input[name="stylePref"]:checked').value,
+        facialHair: document.querySelector('input[name="facialHair"]:checked').value,
+    };
+    sessionStorage.setItem('userPreferences', JSON.stringify(formData));
+    window.location.href = 'camera.html'; 
+});
+</script>
+
 </body>
 </html>
