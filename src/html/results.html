@@ -94,6 +94,13 @@
             text-align: center;
         }
 
+        .result-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
         .match-score {
             position: absolute;
             top: 15px;
@@ -234,6 +241,10 @@
                 <span class="data-label">Facial Hair</span>
                 <span class="data-value" id="val-beard">--</span>
             </div>
+            <div>
+                <span class="data-label">AI Face Shape</span>
+                <span class="data-value" id="val-face">--</span>
+            </div>
         </div>
     </div>
 
@@ -250,8 +261,31 @@
 
 <script>
 window.addEventListener('load', () => {
+    const analysisData = sessionStorage.getItem('analysisResult');
     const storedData = sessionStorage.getItem('userPreferences');
-    
+
+    if (analysisData) {
+        const result = JSON.parse(analysisData);
+        const imageContainer = document.getElementById('imageContainer');
+        const resultImage = document.createElement('img');
+        resultImage.className = 'result-image';
+        resultImage.alt = result.style_name;
+        resultImage.src = 'http://127.0.0.1:8000' + result.image_path;
+        resultImage.onload = () => {
+            resultImage.style.display = 'block';
+            document.getElementById('mockImageText').style.display = 'none';
+        };
+        resultImage.onerror = () => {
+            document.getElementById('mockImageText').innerHTML = '[ Add saved image:<br>' + result.image_path + ' ]';
+        };
+        imageContainer.appendChild(resultImage);
+
+        document.getElementById('styleTitle').textContent = result.style_name;
+        document.getElementById('styleDesc').textContent = result.description;
+        document.getElementById('matchScore').textContent = result.confidence_percent + ' Match';
+        document.getElementById('val-face').textContent = result.face_shape_analysis.detected_shape;
+    }
+
     if (storedData) {
         const prefs = JSON.parse(storedData);
         document.getElementById('val-type').textContent = prefs.hairType;
@@ -265,51 +299,10 @@ window.addEventListener('load', () => {
         document.getElementById('val-beard').textContent = "Unknown";
     }
 });
-
-const mockStyles = [
-    {
-        title: "Textured Fringe",
-        desc: "Adds volume to the top while keeping the sides sharp and clean.",
-        score: "98% Match",
-        mockImgText: "[ AI Generated Image:<br>Textured Fringe ]"
-    },
-    {
-        title: "Classic Taper Fade",
-        desc: "A timeless, professional look.",
-        score: "89% Match",
-        mockImgText: "[ AI Generated Image:<br>Classic Taper Fade ]"
-    },
-    {
-        title: "Modern Buzz Cut",
-        desc: "Ultra low-maintenance.",
-        score: "76% Match",
-        mockImgText: "[ AI Generated Image:<br>Modern Buzz Cut ]"
-    }
-];
-
-let currentStyleIndex = 0;
-
-const styleTitle = document.getElementById('styleTitle');
-const styleDesc = document.getElementById('styleDesc');
-const matchScore = document.getElementById('matchScore');
-const mockImageText = document.getElementById('mockImageText');
 const btnNextStyle = document.getElementById('btnNextStyle');
 
 btnNextStyle.addEventListener('click', () => {
-    currentStyleIndex = (currentStyleIndex + 1) % mockStyles.length;
-    
-    const nextStyle = mockStyles[currentStyleIndex];
-    
-    styleTitle.textContent = nextStyle.title;
-    styleDesc.textContent = nextStyle.desc;
-    matchScore.textContent = nextStyle.score;
-    mockImageText.innerHTML = nextStyle.mockImgText;
-
-    const imageContainer = document.getElementById('imageContainer');
-    imageContainer.style.opacity = '0.5';
-    setTimeout(() => {
-        imageContainer.style.opacity = '1';
-    }, 150);
+    window.location.href = 'questionnaire.html';
 });
 </script>
 

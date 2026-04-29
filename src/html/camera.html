@@ -111,6 +111,11 @@
             background-color: #b91c1c;
         }
 
+        .btn-capture:disabled {
+            background-color: #9ca3af;
+            cursor: wait;
+        }
+
         .btn-back {
             background: none;
             color: var(--blue);
@@ -138,6 +143,7 @@
         <ul class="instructions-list">
             <li>💡 Good lighting</li>
             <li>🧢 Remove hat/glasses</li>
+            <li>Push hair back from your forehead</li>
             <li>🎯 Center your face</li>
         </ul>
     </div>
@@ -153,6 +159,7 @@
 const videoElement = document.getElementById('webcam');
 const captureBtn = document.getElementById('captureBtn');
 const backBtn = document.getElementById('backBtn');
+const API_URL = 'http://127.0.0.1:8000/api/analyze';
 
 async function startCamera() {
     try {
@@ -165,7 +172,19 @@ async function startCamera() {
 
 window.addEventListener('load', startCamera);
 
-captureBtn.addEventListener('click', () => {
+function stopCamera() {
+    const stream = videoElement.srcObject;
+    if (stream) stream.getTracks().forEach(t => t.stop());
+}
+
+captureBtn.addEventListener('click', async () => {
+    const userPreferences = JSON.parse(sessionStorage.getItem('userPreferences') || 'null');
+    if (!userPreferences) {
+        alert('Please answer the questionnaire first.');
+        window.location.href = 'questionnaire.html';
+        return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = videoElement.videoWidth;
     canvas.height = videoElement.videoHeight;
@@ -177,12 +196,34 @@ captureBtn.addEventListener('click', () => {
 
     const image = canvas.toDataURL('image/png');
     sessionStorage.setItem('customerPhoto', image);
-    window.location.href = 'results.html';
+
+    captureBtn.disabled = true;
+    captureBtn.textContent = 'Analyzing...';
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...userPreferences, image }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.detail || result.error || 'Analysis failed.');
+        }
+
+        sessionStorage.setItem('analysisResult', JSON.stringify(result));
+        stopCamera();
+        window.location.href = 'results.html';
+    } catch (error) {
+        alert(error.message + ' Make sure the Python backend is running.');
+        captureBtn.disabled = false;
+        captureBtn.textContent = '📸 Capture Photo';
+    }
 });
 
 backBtn.addEventListener('click', () => {
-    const stream = videoElement.srcObject;
-    if (stream) stream.getTracks().forEach(t => t.stop());
+    stopCamera();
     window.location.href = 'questionnaire.html';
 });
 </script>

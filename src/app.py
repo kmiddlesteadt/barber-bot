@@ -1,237 +1,209 @@
 """
-BarberBot Flask Backend
-Hairstyle recommendation system using SVM and image overlay
+BarberBot FastAPI backend.
+
+Receives questionnaire answers plus a Base64 face photo, detects face shape with
+ResNet50, recommends a haircut with an SVM, and returns a saved image path.
 """
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import base64
+import io
+import os
+import pickle
+from typing import Dict, List
+
 import cv2
 import numpy as np
-import pickle
-import os
-import base64
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from PIL import Image
-import io
-from vision_service import initialize_vision_service, get_vision_service
 
-app = Flask(__name__)
-CORS(app)
+try:
+    from .train_svm import generate_synthetic_data, train_svm_model
+    from .vision_service import initialize_vision_service
+except ImportError:
+    from train_svm import generate_synthetic_data, train_svm_model
+    from vision_service import initialize_vision_service
 
-# Configure paths
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(BASE_DIR, 'models')
-HAIRSTYLES_DIR = os.path.join(BASE_DIR, 'hairstyles')
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+IMAGES_DIR = os.path.join(BASE_DIR, "images")
 
-# Load models at startup
-print("Loading SVM model...")
-with open(os.path.join(MODELS_DIR, 'svm_model.pkl'), 'rb') as f:
-    svm_model = pickle.load(f)
+os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
 
-print("Loading scaler...")
-with open(os.path.join(MODELS_DIR, 'scaler.pkl'), 'rb') as f:
-    scaler = pickle.load(f)
+app = FastAPI(
+    title="BarberBot Backend",
+    version="1.0",
+    description="Face-shape detection plus SVM haircut recommendation.",
+)
 
-# Initialize Vision Service for face shape classification using ResNet18
-print("Initializing Vision Service (ResNet18 Face Shape Classifier)...")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
+
+
+class AnalyzeRequest(BaseModel):
+    hairType: str
+    hairLength: str
+    stylePref: str
+    facialHair: str
+    image: str
+
+
+FEATURE_ENCODING = {
+    "hairType": {"Straight": 0, "Wavy": 1, "Curly": 2},
+    "hairLength": {"Short": 0, "Medium": 1, "Long": 2},
+    "stylePref": {"Low Maintenance": 0, "Trendy": 1, "Professional": 2},
+    "facialHair": {"No": 0, "Yes": 1},
+    "faceShape": {"Oval": 0, "Square": 1, "Round": 2, "Heart": 3, "Diamond": 4},
+}
+
+HAIRSTYLES: Dict[int, Dict[str, str]] = {
+    0: {
+        "name": "Fringe",
+        "slug": "fringe",
+        "description": "Textured Fringe - Adds volume and modern style.",
+    },
+    1: {
+        "name": "Fade",
+        "slug": "fade",
+        "description": "Classic Fade - Clean sides, timeless look.",
+    },
+}
+
+
+def load_or_create_svm():
+    """Load trained SVM assets, or build a demo model when assets are absent."""
+    model_path = os.path.join(MODELS_DIR, "svm_model.pkl")
+    scaler_path = os.path.join(MODELS_DIR, "scaler.pkl")
+
+    if os.path.exists(model_path) and os.path.exists(scaler_path):
+        with open(model_path, "rb") as model_file:
+            svm_model = pickle.load(model_file)
+        with open(scaler_path, "rb") as scaler_file:
+            scaler = pickle.load(scaler_file)
+        return svm_model, scaler, False
+
+    X, y = generate_synthetic_data(n_samples=200)
+    svm_model, scaler = train_svm_model(X, y)
+    return svm_model, scaler, True
+
+
+svm_model, scaler, using_demo_svm = load_or_create_svm()
 vision_service = initialize_vision_service(MODELS_DIR)
 
-# Hairstyle configuration
-HAIRSTYLES = {
-    0: {'name': 'Fringe', 'file': 'fringe.png', 'description': 'Textured Fringe - Adds volume and modern style'},
-    1: {'name': 'Fade', 'file': 'fade.png', 'description': 'Classic Fade - Clean sides, timeless look'}
-}
 
-# Feature encoding
-FEATURE_ENCODING = {
-    'hairType': {'Straight': 0, 'Wavy': 1, 'Curly': 2},
-    'hairLength': {'Short': 0, 'Medium': 1, 'Long': 2},
-    'stylePref': {'Low Maintenance': 0, 'Trendy': 1, 'Professional': 2},
-    'facialHair': {'No': 0, 'Yes': 1},
-    'faceShape': {'Oval': 0, 'Square': 1, 'Round': 2, 'Heart': 3, 'Diamond': 4}
-}
+def decode_base64_image(image_data: str) -> np.ndarray:
+    """Decode a browser data URL or raw Base64 image string into an OpenCV image."""
+    if "," in image_data:
+        image_data = image_data.split(",", 1)[1]
 
-
-def encode_answers(hair_type, hair_length, style_pref, facial_hair, face_shape):
-    """Convert questionnaire answers + detected face shape to SVM feature vector (5 features)"""
-    features = np.array([
-        FEATURE_ENCODING['hairType'][hair_type],
-        FEATURE_ENCODING['hairLength'][hair_length],
-        FEATURE_ENCODING['stylePref'][style_pref],
-        FEATURE_ENCODING['facialHair'][facial_hair],
-        FEATURE_ENCODING['faceShape'][face_shape]
-    ]).reshape(1, -1)
-    return features
-
-
-def detect_face(image):
-    """Detect face using vision_service - returns face_box for hairstyle overlay"""
-    vision_result = vision_service.detect_and_classify(image)
-    if vision_result['success']:
-        return vision_result['face_box']
-    return None
-
-
-def overlay_hairstyle(image, face_box, hairstyle_path):
-    """Overlay hairstyle PNG on the detected face region"""
     try:
-        x, y, w, h = face_box
-        
-        # Load hairstyle with transparency
-        hairstyle = Image.open(hairstyle_path).convert('RGBA')
-        
-        # Resize hairstyle to match face width, extend height for proper coverage
-        hairstyle_height = int(h * 1.2)
-        hairstyle = hairstyle.resize((w, hairstyle_height), Image.Resampling.LANCZOS)
-        
-        # Position hairstyle above the face (slightly overlapping)
-        paste_y = max(0, y - int(h * 0.3))
-        
-        # Convert image to PIL for pasting
-        image_pil = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        
-        # Paste hairstyle with alpha blending
-        image_pil.paste(hairstyle, (x, paste_y), hairstyle)
-        
-        # Convert back to OpenCV format
-        result = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
-        return result
-    except Exception as e:
-        print(f"Error overlaying hairstyle: {e}")
-        return image
+        image_bytes = base64.b64decode(image_data)
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid Base64 image") from exc
+
+    return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
-def image_to_base64(image):
-    """Convert OpenCV image to base64 string"""
-    _, buffer = cv2.imencode('.png', image)
-    return base64.b64encode(buffer).decode()
-
-
-@app.route('/api/analyze', methods=['POST'])
-def analyze():
-    """
-    Main analysis endpoint
-    Processes questionnaire + image and returns recommended hairstyle with overlay
-    Now includes face shape detection via ResNet18 as a feature input to SVM
-    """
+def encode_answers(payload: AnalyzeRequest, face_shape: str) -> np.ndarray:
+    """Convert questionnaire answers plus detected face shape into SVM features."""
     try:
-        # Validate request
-        if 'image' not in request.files:
-            return jsonify({'error': 'No image provided'}), 400
-        
-        # Get image file
-        image_file = request.files['image']
-        img_bytes = image_file.read()
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if image is None:
-            return jsonify({'error': 'Invalid image file'}), 400
-        
-        # Get questionnaire answers
-        hair_type = request.form.get('hairType')
-        hair_length = request.form.get('hairLength')
-        style_pref = request.form.get('stylePref')
-        facial_hair = request.form.get('facialHair')
-        
-        # Validate all answers provided
-        if not all([hair_type, hair_length, style_pref, facial_hair]):
-            return jsonify({'error': 'Missing questionnaire answers'}), 400
-        
-        # Detect face and classify face shape using ResNet18
-        vision_result = vision_service.detect_and_classify(image)
-        if not vision_result['success']:
-            return jsonify({'error': f'Face detection failed: {vision_result["error"]}'}), 400
-        
-        detected_face_shape = vision_result['face_shape']
-        face_shape_confidence = vision_result['confidence']
-        face_shape_probabilities = vision_result['probabilities']
-        face_box = vision_result['face_box']
-        
-        # Encode answers including detected face shape and predict with SVM
-        try:
-            features = encode_answers(hair_type, hair_length, style_pref, facial_hair, detected_face_shape)
-            features_scaled = scaler.transform(features)
-            
-            prediction = svm_model.predict(features_scaled)[0]
-            probabilities = svm_model.predict_proba(features_scaled)[0]
-            
-            recommended_style_id = int(prediction)
-            fringe_confidence = float(probabilities[0])
-            fade_confidence = float(probabilities[1])
-        except Exception as e:
-            return jsonify({'error': f'SVM prediction failed: {str(e)}'}), 500
-        
-        # Overlay hairstyle
-        hairstyle_file = HAIRSTYLES[recommended_style_id]['file']
-        hairstyle_path = os.path.join(HAIRSTYLES_DIR, hairstyle_file)
-        
-        if not os.path.exists(hairstyle_path):
-            return jsonify({'error': f'Hairstyle file not found: {hairstyle_file}'}), 500
-        
-        result_image = overlay_hairstyle(image, face_box, hairstyle_path)
-        
-        # Encode result to base64
-        result_base64 = image_to_base64(result_image)
-        
-        # Build response
-        response = {
-            'success': True,
-            'recommended_style': HAIRSTYLES[recommended_style_id]['name'],
-            'description': HAIRSTYLES[recommended_style_id]['description'],
-            'confidence': float(max(fringe_confidence, fade_confidence)),
-            'svm_scores': {
-                'Fringe': fringe_confidence,
-                'Fade': fade_confidence
-            },
-            'user_profile': {
-                'hairType': hair_type,
-                'hairLength': hair_length,
-                'stylePref': style_pref,
-                'facialHair': facial_hair
-            },
-            'face_shape_analysis': {
-                'detected_shape': detected_face_shape,
-                'confidence': face_shape_confidence,
-                'probabilities': face_shape_probabilities
-            },
-            'result_image': f'data:image/png;base64,{result_base64}'
-        }
-        
-        return jsonify(response), 200
-    
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Server error: {str(e)}'}), 500
+        return np.array(
+            [
+                FEATURE_ENCODING["hairType"][payload.hairType],
+                FEATURE_ENCODING["hairLength"][payload.hairLength],
+                FEATURE_ENCODING["stylePref"][payload.stylePref],
+                FEATURE_ENCODING["facialHair"][payload.facialHair],
+                FEATURE_ENCODING["faceShape"][face_shape],
+            ]
+        ).reshape(1, -1)
+    except KeyError as exc:
+        raise HTTPException(status_code=400, detail=f"Unsupported answer: {exc}") from exc
 
 
-@app.route('/api/health', methods=['GET'])
+def confidence_for_prediction(probabilities: List[float], prediction: int) -> float:
+    if len(probabilities) > prediction:
+        return float(probabilities[prediction])
+    return float(max(probabilities)) if len(probabilities) else 0.0
+
+
+@app.get("/api/health")
 def health():
-    """Health check endpoint"""
-    return jsonify({'status': 'OK', 'message': 'BarberBot backend is running'}), 200
+    return {
+        "status": "OK",
+        "message": "BarberBot backend is running",
+        "svm_mode": "demo fallback" if using_demo_svm else "trained model",
+    }
 
 
-@app.route('/', methods=['GET'])
+@app.post("/api/analyze")
+def analyze(payload: AnalyzeRequest):
+    image = decode_base64_image(payload.image)
+
+    vision_result = vision_service.detect_and_classify(image)
+    if not vision_result["success"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Face detection failed: {vision_result['error']}",
+        )
+
+    detected_face_shape = vision_result["face_shape"]
+    features = encode_answers(payload, detected_face_shape)
+    features_scaled = scaler.transform(features)
+
+    prediction = int(svm_model.predict(features_scaled)[0])
+    probabilities = svm_model.predict_proba(features_scaled)[0]
+    confidence = confidence_for_prediction(probabilities, prediction)
+
+    hairstyle = HAIRSTYLES.get(prediction, HAIRSTYLES[0])
+    image_path = f"/images/{hairstyle['slug']}.jpg"
+
+    return {
+        "success": True,
+        "style_name": hairstyle["name"],
+        "description": hairstyle["description"],
+        "confidence": round(confidence, 4),
+        "confidence_percent": f"{round(confidence * 100)}%",
+        "image_path": image_path,
+        "svm_scores": {
+            HAIRSTYLES[i]["name"]: round(float(score), 4)
+            for i, score in enumerate(probabilities)
+            if i in HAIRSTYLES
+        },
+        "user_profile": {
+            "hairType": payload.hairType,
+            "hairLength": payload.hairLength,
+            "stylePref": payload.stylePref,
+            "facialHair": payload.facialHair,
+            "faceShape": detected_face_shape,
+        },
+        "face_shape_analysis": {
+            "detected_shape": detected_face_shape,
+            "confidence": round(float(vision_result["confidence"]), 4),
+            "probabilities": vision_result["probabilities"],
+        },
+    }
+
+
+@app.get("/")
 def root():
-    """Root endpoint with API documentation"""
-    return jsonify({
-        'name': 'BarberBot Backend',
-        'version': '1.0',
-        'endpoints': {
-            '/api/health': 'GET - Health check',
-            '/api/analyze': 'POST - Analyze questionnaire + image, return hairstyle recommendation'
-        }
-    }), 200
-
-
-if __name__ == '__main__':
-    print("\n" + "="*50)
-    print("BarberBot Backend Starting...")
-    print("="*50)
-    print(f"Base directory: {BASE_DIR}")
-    print(f"Models directory: {MODELS_DIR}")
-    print(f"Hairstyles directory: {HAIRSTYLES_DIR}")
-    print("="*50)
-    
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    return {
+        "name": "BarberBot Backend",
+        "version": "1.0",
+        "endpoints": {
+            "/api/health": "GET - Health check",
+            "/api/analyze": "POST - Analyze questionnaire + Base64 image",
+            "/images/{style}.jpg": "Static pre-generated haircut images",
+        },
+    }
