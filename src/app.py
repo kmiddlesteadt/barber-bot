@@ -59,6 +59,11 @@ class AnalyzeRequest(BaseModel):
     image: str
 
 
+class TryOnRequest(BaseModel):
+    image: str
+    haircut: str
+
+
 FEATURE_ENCODING = {
     "hairType": {"Straight": 0, "Wavy": 1, "Curly": 2},
     "hairLength": {"Short": 0, "Medium": 1, "Long": 2},
@@ -138,6 +143,14 @@ def confidence_for_prediction(probabilities: List[float], prediction: int) -> fl
     return float(max(probabilities)) if len(probabilities) else 0.0
 
 
+def hairstyle_from_slug_or_name(haircut: str) -> Dict[str, str]:
+    normalized = haircut.strip().lower()
+    for hairstyle in HAIRSTYLES.values():
+        if normalized in {hairstyle["slug"], hairstyle["name"].lower()}:
+            return hairstyle
+    raise HTTPException(status_code=400, detail=f"Unsupported haircut: {haircut}")
+
+
 @app.get("/api/health")
 def health():
     return {
@@ -172,6 +185,7 @@ def analyze(payload: AnalyzeRequest):
     return {
         "success": True,
         "style_name": hairstyle["name"],
+        "style_slug": hairstyle["slug"],
         "description": hairstyle["description"],
         "confidence": round(confidence, 4),
         "confidence_percent": f"{round(confidence * 100)}%",
@@ -196,6 +210,27 @@ def analyze(payload: AnalyzeRequest):
     }
 
 
+@app.post("/api/try-on-haircut")
+def try_on_haircut(payload: TryOnRequest):
+    """
+    Fake virtual try-on endpoint.
+
+    This keeps the same request shape a real image-editing endpoint would use,
+    but returns the pre-generated haircut image for a reliable demo.
+    """
+    decode_base64_image(payload.image)
+    hairstyle = hairstyle_from_slug_or_name(payload.haircut)
+
+    return {
+        "success": True,
+        "preview_mode": "fake",
+        "style_name": hairstyle["name"],
+        "style_slug": hairstyle["slug"],
+        "edited_image_path": f"/images/{hairstyle['slug']}.jpg",
+        "message": "Demo preview: showing a pre-generated haircut image instead of editing the uploaded photo.",
+    }
+
+
 @app.get("/")
 def root():
     return {
@@ -204,6 +239,7 @@ def root():
         "endpoints": {
             "/api/health": "GET - Health check",
             "/api/analyze": "POST - Analyze questionnaire + Base64 image",
+            "/api/try-on-haircut": "POST - Fake virtual haircut preview",
             "/images/{style}.jpg": "Static pre-generated haircut images",
         },
     }
