@@ -76,12 +76,37 @@ HAIRSTYLES: Dict[int, Dict[str, str]] = {
     0: {
         "name": "Fringe",
         "slug": "fringe",
-        "description": "Textured Fringe - Adds volume and modern style.",
+        "description": "Textured Fringe - Adds softness and movement around the forehead.",
     },
     1: {
         "name": "Fade",
         "slug": "fade",
-        "description": "Classic Fade - Clean sides, timeless look.",
+        "description": "Classic Fade - Clean sides with a sharp, easy-to-maintain finish.",
+    },
+    2: {
+        "name": "Bowl Cut",
+        "slug": "bowl cut",
+        "description": "Modern Bowl Cut - A bold, rounded shape with a fashion-forward edge.",
+    },
+    3: {
+        "name": "Brush Up",
+        "slug": "brush up",
+        "description": "Brush Up - Lifted volume on top for a taller, more energetic profile.",
+    },
+    4: {
+        "name": "Comb Over",
+        "slug": "comb over",
+        "description": "Comb Over - A polished style with controlled shape and clean direction.",
+    },
+    5: {
+        "name": "Fohawk",
+        "slug": "fohawk",
+        "description": "Fohawk - An angular, expressive cut with height through the center.",
+    },
+    6: {
+        "name": "Side Part",
+        "slug": "side part",
+        "description": "Side Part - A classic, balanced style with a professional finish.",
     },
 }
 

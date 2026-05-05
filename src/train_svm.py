@@ -12,12 +12,17 @@ import os
 STYLE_NAMES = [
     'Fringe',
     'Fade',
+    'Bowl Cut',
+    'Brush Up',
+    'Comb Over',
+    'Fohawk',
+    'Side Part',
 ]
 
 
 def score_styles(hair_type, hair_length, style_pref, facial_hair, face_shape):
     """
-    Score the two original haircut classes from the five profile variables.
+    Score haircut classes from the five profile variables.
 
     Features:
     - hair_type: 0=Straight, 1=Wavy, 2=Curly
@@ -30,16 +35,60 @@ def score_styles(hair_type, hair_length, style_pref, facial_hair, face_shape):
     is_curly = hair_type == 2
     is_short = hair_length == 0
     is_medium = hair_length == 1
+    is_long = hair_length == 2
     wants_easy = style_pref == 0
     wants_trendy = style_pref == 1
+    wants_professional = style_pref == 2
+    has_facial_hair = facial_hair == 1
     is_oval = face_shape == 0
     is_square = face_shape == 1
     is_round = face_shape == 2
     is_heart = face_shape == 3
+    is_diamond = face_shape == 4
 
     return np.array([
-        1.6 * wants_trendy + 1.2 * is_medium + 0.8 * is_wavy + 0.5 * (is_oval or is_heart),
-        1.5 * wants_easy + 1.2 * is_short + 0.8 * is_curly + 0.5 * (is_square or is_round),
+        # Fringe: strong for round/heart faces, softer texture, and medium length.
+        2.1 * (is_round or is_heart)
+        + 1.0 * wants_trendy
+        + 0.8 * is_medium
+        + 0.7 * (is_wavy or is_curly),
+
+        # Fade: strong for square/round faces, short hair, easy upkeep, and facial hair.
+        2.0 * (is_square or is_round)
+        + 1.1 * wants_easy
+        + 1.0 * is_short
+        + 0.6 * has_facial_hair,
+
+        # Bowl Cut: a niche trendy option that works best with straight medium hair.
+        1.2 * (is_oval or is_heart)
+        + 1.3 * wants_trendy
+        + 0.9 * is_medium
+        + 0.8 * (hair_type == 0),
+
+        # Brush Up: high-volume option for oval, round, and diamond faces.
+        1.9 * (is_oval or is_round or is_diamond)
+        + 1.2 * wants_trendy
+        + 0.9 * is_medium
+        + 0.5 * is_wavy,
+
+        # Comb Over: polished option for oval, heart, and diamond faces.
+        1.9 * (is_oval or is_heart or is_diamond)
+        + 1.3 * wants_professional
+        + 0.8 * (is_short or is_medium)
+        + 0.5 * has_facial_hair,
+
+        # Fohawk: angular, expressive option for square and diamond faces.
+        1.8 * (is_square or is_diamond)
+        + 1.4 * wants_trendy
+        + 0.8 * is_medium
+        + 0.5 * (is_wavy or is_curly),
+
+        # Side Part: classic balanced option for oval, square, and heart faces.
+        1.9 * (is_oval or is_square or is_heart)
+        + 1.2 * wants_professional
+        + 1.0 * wants_easy
+        + 0.7 * (is_short or is_medium)
+        + 0.3 * is_long,
     ])
 
 

@@ -388,12 +388,11 @@ window.addEventListener('load', async () => {
         return;
     }
 
-    // Decide which overlay to use (based on style_name)
-    const styleName = (result.style_name || "").toLowerCase();
-    const styleSlug = styleName.includes("fade") ? "fade" : "fringe";
+    // Decide which overlay to use from the backend hairstyle slug.
+    const styleSlug = (result.style_slug || "fringe").toLowerCase();
 
     // Since results.html is /html/results.html and overlays are /html/overlays/
-    const overlayUrl = `./overlays/${styleSlug}.png`;
+    const overlayUrl = `./overlays/${encodeURIComponent(styleSlug)}.png`;
     
     try {
         finalFallback.textContent = "Generating preview...";
