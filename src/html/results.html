@@ -90,6 +90,12 @@
             overflow: hidden;
         }
 
+        .image-showcase.single {
+            width: 100%;
+            max-width: 360px;
+            margin: 0 auto 30px;
+        }
+
         .preview-label {
             position: absolute;
             left: 0;
@@ -250,20 +256,17 @@
     <div class="subtitle">Analysis Complete</div>
     <h1>Best haircut for you</h1>
 
-    <div class="preview-grid">
-        <div class="image-showcase">
-            <img class="result-image" id="beforeImage" alt="Your captured photo">
-            <div class="mock-image-text" id="beforeFallback">Your captured photo</div>
-            <div class="preview-label">Before</div>
-        </div>
+    <div class="image-showcase single">
 
-        <div class="image-showcase" id="imageContainer">
-            <div class="match-score" id="matchScore">98% Match</div>
-            <img class="result-image" id="afterImage" alt="Demo haircut preview">
-            <div class="mock-image-text" id="mockImageText">[ Demo Preview ]</div>
-            <div class="preview-label">Fake AI Preview</div>
-        </div>
+      <div class="match-score" id="matchScore">-- Match</div>
+
+      <img class="result-image" id="finalImage" alt="Haircut preview" />
+      <div class="mock-image-text" id="finalFallback">Generating preview...</div>
+
+      <div class="preview-label">AI Preview</div>
     </div>
+    <canvas id="compositeCanvas" style="display:none;"></canvas>
+
 
     <div class="demo-note" id="demoNote">
         Demo mode: this preview uses a saved haircut image. Later, this same step can call a real image-editing API.
@@ -310,72 +313,113 @@
 </div>
 
 <script>
-window.addEventListener('load', () => {
-    const analysisData = sessionStorage.getItem('analysisResult');
-    const storedData = sessionStorage.getItem('userPreferences');
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = () => reject(new Error("Failed to load image: " + src));
+            img.src = src;
+        });
+    }
+
+    async function composeOverlay(photoDataUrl, overlayUrl) {
+        const baseImg = await loadImage(photoDataUrl);
+        const overlayImg = await loadImage(overlayUrl);
+
+        const canvas = document.getElementById("compositeCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = baseImg.width;
+        canvas.height = baseImg.height;
+
+        // draw user's photo
+        ctx.drawImage(baseImg, 0, 0);
+
+        // --- demo-safe overlay placement ---
+        const overlayW = Math.round(canvas.width * 0.35);
+        const overlayH = Math.round(overlayW * (overlayImg.height / overlayImg.width));
+
+        const x = Math.round((canvas.width - overlayW) / 2);
+
+        // Move up by 35% of overlay height (compensates top padding)
+
+        const baseY = Math.round(canvas.height * 0.16);  // move down (~34px on 480px tall)
+        const y = Math.max(0, baseY - Math.round(overlayH * 0.05));
+
+        ctx.drawImage(overlayImg, x, y, overlayW, overlayH);   
+
+
+        return canvas.toDataURL("image/png");
+    }
+window.addEventListener('load', async () => {
+    const analysisRaw = sessionStorage.getItem('analysisResult');
+    const prefsRaw = sessionStorage.getItem('userPreferences');
     const customerPhoto = sessionStorage.getItem('customerPhoto');
 
-    if (customerPhoto) {
-        const beforeImage = document.getElementById('beforeImage');
-        beforeImage.src = customerPhoto;
-        beforeImage.onload = () => {
-            document.getElementById('beforeFallback').style.display = 'none';
-        };
+
+    const finalImage = document.getElementById('finalImage');
+    const finalFallback = document.getElementById('finalFallback');
+
+    // 1) If no analysis data, stop early with a helpful message
+    if (!analysisRaw) {
+        finalFallback.textContent = "No analysis result found. Please retake the photo.";
+        finalFallback.style.display = "block";
+        finalImage.style.display = "none";
+        return;
     }
 
-    if (analysisData) {
-        const result = JSON.parse(analysisData);
-        loadFakeTryOnPreview(result, customerPhoto);
+    const result = JSON.parse(analysisRaw);
 
-        document.getElementById('styleTitle').textContent = result.style_name;
-        document.getElementById('styleDesc').textContent = result.description;
-        document.getElementById('matchScore').textContent = result.confidence_percent + ' Match';
-        document.getElementById('val-face').textContent = result.face_shape_analysis.detected_shape;
+    // 2) Fill title/desc/score from FastAPI keys
+    document.getElementById('styleTitle').textContent = result.style_name ?? "—";
+    document.getElementById('styleDesc').textContent = result.description ?? "—";
+    document.getElementById('matchScore').textContent =
+    (result.confidence_percent ? result.confidence_percent + " Match" : "-- Match");
+
+    // 3) Face shape
+    const faceShape = result.face_shape_analysis?.detected_shape || result.user_profile?.faceShape || "—";
+    document.getElementById('val-face').textContent = faceShape;
+    
+    // 4) Build overlay preview using user's photo + overlay png
+    if (!customerPhoto) {
+        finalFallback.style.display = "block";
+        finalImage.style.display = "none";
+        finalFallback.textContent = "Missing camera photo. Please retake the photo.";
+        return;
     }
 
-    async function loadFakeTryOnPreview(result, customerPhoto) {
-        const afterImage = document.getElementById('afterImage');
-        const fallbackPath = result.image_path;
+    // Decide which overlay to use (based on style_name)
+    const styleName = (result.style_name || "").toLowerCase();
+    const styleSlug = styleName.includes("fade") ? "fade" : "fringe";
 
-        try {
-            if (!customerPhoto) {
-                throw new Error('Missing camera photo.');
-            }
+    // Since results.html is /html/results.html and overlays are /html/overlays/
+    const overlayUrl = `./overlays/${styleSlug}.png`;
+    
+    try {
+        finalFallback.textContent = "Generating preview...";
+        finalFallback.style.display = "block";
+        finalImage.style.display = "none";
 
-            const response = await fetch('http://127.0.0.1:8000/api/try-on-haircut', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image: customerPhoto,
-                    haircut: result.style_slug || result.style_name,
-                }),
-            });
+        const composite = await composeOverlay(customerPhoto, overlayUrl);
 
-            const preview = await response.json();
-            if (!response.ok || !preview.success) {
-                throw new Error(preview.detail || 'Preview failed.');
-            }
+        finalImage.src = composite;
+        finalImage.style.display = "block";
+        finalFallback.style.display = "none";
 
-            afterImage.src = 'http://127.0.0.1:8000' + preview.edited_image_path;
-            document.getElementById('demoNote').textContent = preview.message;
-        } catch (error) {
-            afterImage.src = 'http://127.0.0.1:8000' + fallbackPath;
-        }
+    } catch (e) {
+    // If overlay fails, fall back to showing the raw photo
+    finalImage.src = customerPhoto;
+    finalImage.style.display = "block";
+    finalFallback.style.display = "none";
+}
 
-        afterImage.onload = () => {
-            document.getElementById('mockImageText').style.display = 'none';
-        };
-        afterImage.onerror = () => {
-            document.getElementById('mockImageText').innerHTML = '[ Add saved image:<br>' + fallbackPath + ' ]';
-        };
-    }
-
-    if (storedData) {
-        const prefs = JSON.parse(storedData);
-        document.getElementById('val-type').textContent = prefs.hairType;
-        document.getElementById('val-length').textContent = prefs.hairLength;
-        document.getElementById('val-pref').textContent = prefs.stylePref;
-        document.getElementById('val-beard').textContent = prefs.facialHair;
+    // 5) Fill questionnaire values (from session storage)
+    if (prefsRaw) {
+        const prefs = JSON.parse(prefsRaw);
+        document.getElementById('val-type').textContent = prefs.hairType ?? "—";
+        document.getElementById('val-length').textContent = prefs.hairLength ?? "—";
+        document.getElementById('val-pref').textContent = prefs.stylePref ?? "—";
+        document.getElementById('val-beard').textContent = prefs.facialHair ?? "—";
     } else {
         document.getElementById('val-type').textContent = "Unknown";
         document.getElementById('val-length').textContent = "Unknown";
@@ -383,8 +427,9 @@ window.addEventListener('load', () => {
         document.getElementById('val-beard').textContent = "Unknown";
     }
 });
-const btnNextStyle = document.getElementById('btnNextStyle');
 
+// keep your existing button behavior
+const btnNextStyle = document.getElementById('btnNextStyle');
 btnNextStyle.addEventListener('click', () => {
     window.location.href = 'questionnaire.html';
 });
